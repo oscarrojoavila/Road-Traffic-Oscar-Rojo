@@ -1,0 +1,57 @@
+/**
+* Name: MODEL01OSCAR
+* TUTORIAL SEMANA 1 MODEL 1
+ 
+* Author: oscarrojoavila
+* Tags: 
+*/
+model MODEL01OSCAR
+
+//definimos los nombres de las variables que importamos de archivos
+//hacemos que el step de simulación signifique 10 mins en vez de un segundo
+//no entiendo bien lo que significa el geometry shape
+global {
+	file archivo_edificios <- file("../includes/building.shp");
+	file archivo_carreteras <- file("../includes/road.shp");
+	file archivo_limites <- file("../includes/bounds.shp");
+	geometry shape <- envelope(archivo_limites);
+	float step <- 10 #mn;
+//creamos los edificios sacandolos de la variable previamente definida y con "atributo" nature
+	init {
+		create building from: archivo_edificios with: [type::string(read ("NATURE"))] {//solo  
+			if type="Industrial" {
+				color <- #orange ;
+			}
+		}
+		create road from: archivo_carreteras ;
+	}
+}
+
+species building {
+	string type; 
+	rgb color <- #black  ;
+	
+	aspect base {
+		draw shape color: color ;
+	}
+}
+
+species road  {
+	rgb color <- #blue;
+	aspect base {
+		draw shape color: color ;
+	}
+}
+
+experiment road_traffic type: gui {
+	parameter "Shapefile para los edificios:" var: archivo_edificios category: "GIS" ;
+	parameter "Shapefile para las carreteras:" var: archivo_carreteras category: "GIS" ;
+	parameter "Shapefile para los límites:" var: archivo_limites category: "GIS" ;
+		
+	output {
+		display city_display type:3d {
+			species building aspect: base ;
+			species road aspect: base ;
+		}
+	}
+}
