@@ -16,12 +16,17 @@ global {
 	file archivo_limites <- file("../includes/bounds.shp");
 	geometry shape <- envelope(archivo_limites);
 	float step <- 10 #mn;
+	int numerodepersonas <- 100;
 //creamos los edificios sacandolos de la variable previamente definida y con "atributo" nature
 	init {
 		create building from: archivo_edificios with: [type::string(read ("NATURE"))] {//solo  
 			if type="Industrial" {
 				color <- #orange ;
 			}
+		}
+		list<building> residential_buildings <- building where (each.type="Residential");
+		create personas number: numerodepersonas {
+			location <- any_location_in (one_of (residential_buildings));
 		}
 		create road from: archivo_carreteras ;
 	}
@@ -43,15 +48,29 @@ species road  {
 	}
 }
 
+species personas {
+	rgb color <- #yellow ;
+	
+	aspect base {
+		draw circle(8) color: color border: #black;
+	}
+}
+
 experiment road_traffic type: gui {
 	parameter "Shapefile para los edificios:" var: archivo_edificios category: "GIS" ;
 	parameter "Shapefile para las carreteras:" var: archivo_carreteras category: "GIS" ;
 	parameter "Shapefile para los límites:" var: archivo_limites category: "GIS" ;
+	parameter "Number of people agents" var: numerodepersonas category: "People" ;
+	
 		
 	output {
 		display city_display type:3d {
 			species building aspect: base ;
 			species road aspect: base ;
+			species personas aspect: base ;
+			
 		}
 	}
+
+
 }
