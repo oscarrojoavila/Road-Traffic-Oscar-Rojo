@@ -1,76 +1,120 @@
 /**
-* Name: MODEL01OSCAR
-* TUTORIAL SEMANA 1 MODEL 1
- 
-* Author: oscarrojoavila
-* Tags: 
+* Name: Movement of the people agents (Ajustado)
+* Author:
+* Description: Third part of the tutorial: Road Traffic (con variables ajustadas)
 */
-model MODEL01OSCAR
 
-//definimos los nombres de las variables que importamos de archivos
-//hacemos que el step de simulación signifique 10 mins en vez de un segundo
-//no entiendo bien lo que significa el geometry shape
+model tutorial_gis_city_traffic
+
 global {
+	// Variables ajustadas
 	file archivo_edificios <- file("../includes/building.shp");
 	file archivo_carreteras <- file("../includes/road.shp");
 	file archivo_limites <- file("../includes/bounds.shp");
 	geometry shape <- envelope(archivo_limites);
 	float step <- 10 #mn;
+	date starting_date <- date("2019-09-01-00-00-00");
 	int numerodepersonas <- 100;
-//creamos los edificios sacandolos de la variable previamente definida y con "atributo" nature
+	int mininiciotrabajo <- 6;
+	int maxiniciotrabajo <- 8;
+	int minfintrabajo <- 16; 
+	int maxfintrabajo <- 20; 
+	float minvelocidad <- 1.0 #km / #h;
+	float maxvelocidad <- 5.0 #km / #h; 
+	graph the_graph;
+
 	init {
-		create building from: archivo_edificios with: [type::string(read ("NATURE"))] {//solo  
-			if type="Industrial" {
-				color <- #orange ;
+		// Creación de los edificios desde el shapefile
+		create building from: archivo_edificios with: [type::string(read ("NATURE"))] {
+			if type = "Industrial" {
+				color <- #blue;
 			}
 		}
-		list<building> residential_buildings <- building where (each.type="Residential");
+		
+		create road from: archivo_carreteras;
+		the_graph <- as_edge_graph(road);
+		
+		list<building> residential_buildings <- building where (each.type = "Residential");
+		list<building> industrial_buildings <- building where (each.type = "Industrial");
+
 		create personas number: numerodepersonas {
-			location <- any_location_in (one_of (residential_buildings));
+			velocidad <- rnd(minvelocidad, maxvelocidad);
+			iniciotrabajo <- rnd(mininiciotrabajo, maxiniciotrabajo);
+			fintrabajo <- rnd(minfintrabajo, maxfintrabajo);
+			vivienda <- one_of(residential_buildings);
+			lugardetrabajo <- one_of(industrial_buildings);
+			objetivo <- "resting";
+			location <- any_location_in(vivienda);
 		}
-		create road from: archivo_carreteras ;
 	}
 }
 
 species building {
 	string type; 
-	rgb color <- #black  ;
+	rgb color <- #gray;
 	
 	aspect base {
-		draw shape color: color ;
+		draw shape color: color;
 	}
 }
 
 species road  {
-	rgb color <- #blue;
+	rgb color <- #black;
 	aspect base {
-		draw shape color: color ;
+		draw shape color: color;
 	}
 }
 
-species personas {
-	rgb color <- #yellow ;
+species personas skills: [moving] {
+	rgb color <- #yellow;
+	building vivienda <- nil;
+	building lugardetrabajo <- nil;
+	int iniciotrabajo;
+	int fintrabajo;
+	string objetivo;
+	point the_target <- nil;
+	float velocidad;
+
+	// Reflex para ir al trabajo
+	reflex horadetrabajo when: current_date.hour = iniciotrabajo and objetivo = "resting" {
+		objetivo <- "working";
+		the_target <- any_location_in(lugardetrabajo);
+	}
+	
+	reflex horadecasa when: current_date.hour = fintrabajo and objetivo = "working" {
+		objetivo <- "resting";
+		the_target <- any_location_in(vivienda);
+	}
+
+	reflex mover when: the_target != nil {
+		do goto target: the_target on: the_graph;
+		if the_target = location {
+			the_target <- nil;
+		}
+	}
 	
 	aspect base {
-		draw circle(8) color: color border: #black;
+		draw circle(10) color: color border: #black;
 	}
 }
 
 experiment road_traffic type: gui {
-	parameter "Shapefile para los edificios:" var: archivo_edificios category: "GIS" ;
-	parameter "Shapefile para las carreteras:" var: archivo_carreteras category: "GIS" ;
-	parameter "Shapefile para los límites:" var: archivo_limites category: "GIS" ;
-	parameter "Number of people agents" var: numerodepersonas category: "People" ;
-	
-		
+	parameter "Shapefile para los edificios:" var: archivo_edificios category: "GIS";
+	parameter "Shapefile para las carreteras:" var: archivo_carreteras category: "GIS";
+	parameter "Shapefile para los límites:" var: archivo_limites category: "GIS";
+	parameter "Número de personas" var: numerodepersonas category: "People";
+	parameter "Hora mínima de inicio de trabajo" var: mininiciotrabajo category: "People" min: 2 max: 8;
+	parameter "Hora máxima de inicio de trabajo" var: maxiniciotrabajo category: "People" min: 8 max: 12;
+	parameter "Hora mínima de fin de trabajo" var: minfintrabajo category: "People" min: 12 max: 16;
+	parameter "Hora máxima de fin de trabajo" var: maxfintrabajo category: "People" min: 16 max: 23;
+	parameter "Velocidad mínima" var: minvelocidad category: "People" min: 0.1 #km/#h;
+	parameter "Velocidad máxima" var: maxvelocidad category: "People" max: 10 #km/#h;
+
 	output {
-		display city_display type:3d {
-			species building aspect: base ;
-			species road aspect: base ;
-			species personas aspect: base ;
-			
+		display city_display type: 3d {
+			species building aspect: base;
+			species road aspect: base;
+			species personas aspect: base;
 		}
 	}
-
-
 }
