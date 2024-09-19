@@ -1,0 +1,124 @@
+/**
+* Name: MODEL01OSCAR
+* TUTORIAL SEMANA 1 MODEL 1
+ 
+* Author: oscarrojoavila
+* Tags: 
+*/
+model MODEL01OSCAR
+
+//definimos los nombres de las variables que importamos de archivos
+//hacemos que el step de simulación signifique 10 mins en vez de un segundo
+//no entiendo bien lo que significa el geometry shape
+global {
+	file archivo_edificios <- file("../includes/building.shp");
+	file archivo_carreteras <- file("../includes/road.shp");
+	file archivo_limites <- file("../includes/bounds.shp");
+	geometry shape <- envelope(archivo_limites);
+	float step <- 10 #mn;
+	int numerodepersonas <- 100;
+  	int mininiciotrabajo <-6;
+ 	int maxiniciotrabajo<-8;
+    int minfintrabajo<-16;
+  	int maxfintrabajo<-20;
+  	float minvelocidad<- 1.0 #km/#h;
+  	float maxvelocidad<- 5.0 #km/#h;
+    graph the_graph;
+	
+//creamos los edificios sacandolos de la variable previamente definida y con "atributo" nature
+	init {
+		create building from: archivo_edificios with: [type::string(read ("NATURE"))] {//solo  
+			if type="Industrial" {
+				color <- #orange ;
+			}
+		}
+    the_graph <- as_edge_graph(road);
+
+		list<building> residential_buildings <- building where (each.type="Residential");
+		list<building> industrial_buildings <- building  where (each.type="Industrial") ;
+
+		create personas number: numerodepersonas {
+      		velocidad <-rnd(minvelocidad,maxvelocidad);
+      		iniciotrabajo<-rnd(mininiciotrabajo,maxiniciotrabajo);
+      		fintrabajo<-rnd(minfintrabajo,maxfintrabajo);
+	        vivienda<-one_of(residential_buildings);
+  	   		 lugardetrabajo<-one_of(industrial_buildings);
+      		objetivo <- "resting";
+			location <- any_location_in(vivienda);
+		}
+		create road from: archivo_carreteras ;
+	}
+}
+
+species building {
+	string type; 
+	rgb color <- #black  ;
+	
+	aspect base {
+		draw shape color: color ;
+	}
+}
+
+species road  {
+	rgb color <- #blue;
+	aspect base {
+		draw shape color: color ;
+	}
+}
+
+species personas {
+  rgb color <- #yellow ;
+  building vivienda<- nil;
+  building lugardetrabajo <- nil ;
+  int iniciotrabajo;
+  int fintrabajo;
+  string objetivo;
+  point the_target <- nil ;
+  float velocidad ; //esto no estaba en la solución porque**
+
+  reflex  horadetrabajo when: current_date.hour = iniciotrabajo and objetivo = "resting"{
+      objetivo <- "resting" ;
+      the_target <- any_location_in (vivienda);
+  }
+
+  reflex horadecasa when: current_date.hour = fintrabajo and objetivo = "working"{
+    objetivo <- "resting";
+    the_target <- any_location_in (vivienda);
+  }
+
+  reflex mover when: the_target != nil {
+    do goto target: the_target on: the_graph ;
+    if the_target = location {
+      the_target<- nil;
+    }
+  }
+	
+	aspect base {
+		draw circle(10) color: color border: #black;
+	}
+}
+
+experiment road_traffic type: gui {
+	parameter "Shapefile para los edificios:" var: archivo_edificios category: "GIS" ;
+	parameter "Shapefile para las carreteras:" var: archivo_carreteras category: "GIS" ;
+	parameter "Shapefile para los límites:" var: archivo_limites category: "GIS" ;
+	parameter "Number of people agents" var: numerodepersonas category: "People" ;
+
+  parameter "Earliest hour to start work" var: mininiciotrabajo category: "People" min: 2 max: 8;
+	parameter "Latest hour to start work" var: maxiniciotrabajo category: "People" min: 8 max: 12;
+	parameter "Earliest hour to end work" var: minfintrabajo category: "People" min: 12 max: 16;
+	parameter "Latest hour to end work" var: maxfintrabajo category: "People" min: 16 max: 23;
+	parameter "minimal speed" var: minvelocidad category: "People" min: 0.1 #km/#h ;
+	parameter "maximal speed" var: maxvelocidad category: "People" max: 10 #km/#h;
+		
+		
+	output {
+		display city_display type:3d {
+			species building aspect: base ;
+			species road aspect: base ;
+			species personas aspect: base ;
+			
+		}
+	}
+
+}
