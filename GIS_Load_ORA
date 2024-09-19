@@ -145,5 +145,15 @@ experiment road_traffic type: gui {
 			species road aspect: base;
 			species personas aspect: base;
 		}
+		display media_desgastedecarretera refresh:every(10#cycles) {
+             chart "Estado de la carretera" type: series size: {1, 0.5} position: {0, 0} {
+                 data "Mean road destruction" value: mean (road collect each.coeficiente) style: line color: #green ;
+	         data "Max road destruction" value: road max_of each.coeficiente style: line color: #red ;
+	     }
+	     chart "People Objectif" type: pie style: exploded size: {1, 0.5} position: {0, 0.5}{
+	       data "Working" value: personas count (each.objetivo="working") color: #green ;
+	       data "Resting" value: personas count (each.objetivo="resting") color: #red ;
+	  }
+	     }
 	}
 }
