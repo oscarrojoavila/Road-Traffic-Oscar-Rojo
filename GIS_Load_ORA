@@ -1,13 +1,13 @@
 /**
-* Name: Movement of the people agents (Ajustado)
-* Author:
-* Description: Third part of the tutorial: Road Traffic (con variables ajustadas)
+* Name: Peso por carretera  
+* Author:Oscar Rojo
+* Description: cuarta parte del tutorial semana 1
+* Tags: graph
 */
 
-model tutorial_gis_city_traffic
+model Peso_importancia_por_carretera
 
 global {
-	// Variables ajustadas
 	file archivo_edificios <- file("../includes/building.shp");
 	file archivo_carreteras <- file("../includes/road.shp");
 	file archivo_limites <- file("../includes/bounds.shp");
@@ -17,23 +17,24 @@ global {
 	int numerodepersonas <- 100;
 	int mininiciotrabajo <- 6;
 	int maxiniciotrabajo <- 8;
-	int minfintrabajo <- 16; 
-	int maxfintrabajo <- 20; 
+	int minfintrabajo <- 16;
+	int maxfintrabajo <- 20;
 	float minvelocidad <- 1.0 #km / #h;
-	float maxvelocidad <- 5.0 #km / #h; 
+	float maxvelocidad <- 5.0 #km / #h;
 	graph the_graph;
 
 	init {
-		// Creación de los edificios desde el shapefile
-		create building from: archivo_edificios with: [type::string(read ("NATURE"))] {
+		create building from: archivo_edificios with: [type::string(read("NATURE"))] {
 			if type = "Industrial" {
-				color <- #blue;
+				color <- #black;
+			} else {
+				color <- #orange;
 			}
 		}
-		
 		create road from: archivo_carreteras;
-		the_graph <- as_edge_graph(road);
-		
+		map<road, float> mapaconpeso <- road as_map(each::(each.coeficiente * each.shape.perimeter));
+		the_graph <- as_edge_graph(road) with_weights mapaconpeso;
+
 		list<building> residential_buildings <- building where (each.type = "Residential");
 		list<building> industrial_buildings <- building where (each.type = "Industrial");
 
@@ -50,16 +51,19 @@ global {
 }
 
 species building {
-	string type; 
+	string type;
 	rgb color <- #gray;
-	
+
 	aspect base {
 		draw shape color: color;
 	}
 }
 
-species road  {
-	rgb color <- #black;
+species road {
+	float coeficiente <- rnd(1.0, 2.0) max: 2.0;
+	int colorValue <- int(255 * (coeficiente - 1)) update: int(255 * (coeficiente - 1));
+	rgb color <- rgb(min([255, colorValue]), max([0, 255 - colorValue]), 0) update: rgb(min([255, colorValue]), max([0, 255 - colorValue]), 0);
+
 	aspect base {
 		draw shape color: color;
 	}
@@ -75,12 +79,11 @@ species personas skills: [moving] {
 	point the_target <- nil;
 	float velocidad;
 
-	// Reflex para ir al trabajo
 	reflex horadetrabajo when: current_date.hour = iniciotrabajo and objetivo = "resting" {
 		objetivo <- "working";
 		the_target <- any_location_in(lugardetrabajo);
 	}
-	
+
 	reflex horadecasa when: current_date.hour = fintrabajo and objetivo = "working" {
 		objetivo <- "resting";
 		the_target <- any_location_in(vivienda);
@@ -92,9 +95,9 @@ species personas skills: [moving] {
 			the_target <- nil;
 		}
 	}
-	
+
 	aspect base {
-		draw circle(10) color: color border: #black;
+		draw circle(8) color: color border: #black;
 	}
 }
 
